@@ -1,34 +1,48 @@
 # Tableau Metadata Dictionary
 
-Este projeto tem como objetivo **extrair e documentar metadados de campos calculados** a partir de arquivos **Tableau (.twb / .twbx)**, gerando um **dicionário de dados em CSV** que pode ser usado para governança, documentação, auditoria ou análises técnicas.
+This project aims to extract and document metadata from calculated fields in Tableau workbook files (.twb / .twbx), generating a CSV-based data dictionary that can be used for governance, documentation, auditing, or technical analysis.
 
-A ideia central é facilitar a leitura, padronização e reutilização de campos calculados criados em dashboards Tableau.
+The core idea is to simplify the inspection, standardization, and reuse of calculated fields created in Tableau dashboards.
 
----
+## Project Goal
 
-## 🎯 Objetivo do Projeto
+- Read Tableau .twb and .twbx files
+- Extract calculated fields defined in the workbook
+- Filter fields based on standardized naming prefixes
+- Generate a structured CSV file containing calculated field metadata
 
-- Ler arquivos Tableau `.twb` ou `.twbx`
-- Extrair campos calculados definidos no workbook
-- Filtrar campos por **prefixos padronizados**
-- Gerar um **CSV estruturado** com os metadados dos campos
+This project can be used as:
 
-Este projeto pode ser usado como:
-- Apoio à **governança de dados**
-- Documentação técnica de dashboards
-- Base para análises de padronização de KPIs
-- Ferramenta auxiliar para times de BI / Analytics Engineering
+- Support for data governance initiatives
+- Technical documentation for Tableau dashboards
+- A foundation for KPI standardization analysis
+- An auxiliary tool for BI / Analytics Engineering teams
 
----
-
-## 🛠️ Pré-requisitos
+## Prerequisites
 
 - Python **3.9+**
-- Ambiente virtual (recomendado)
-- Bibliotecas Python:
+- Virtual environment (recommended)
+- Python libraries:
   - `pandas`
 
----
-## 🛠️ Padrão de desenvolvimento adotado
+## Development Standard Adopted
+
+The project applies naming conventions to enforce governance and reduce noise during extraction.
+Only calculated fields that follow the predefined prefixes are considered valid:
 
 ("kpi_", "hp_", "prmt_", "filter_", "dt_", "aux_", "fmt_", "var_")
+
+These prefixes represent different semantic categories (KPIs, helper fields, parameters, filters, date fields, auxiliary logic, formatting fields, and variables), enabling consistent governance and easier validation.
+
+## Related Article
+
+This project is part of a technical article series where I describe the motivation,
+architecture, and evolution of this solution — from a local MVP to an enterprise-scale
+analytics platform.
+
+- **Part 1:**
+  [Stop Manually Checking Workbooks: How I Use a Metadata Extractor in Python (Part 1/3)](https://medium.com/@raphaelespires/stop-manually-checking-workbooks-how-i-use-a-metadata-extractor-in-python-part-1-3-a2a8e7c59889)
+
+Future articles will cover enterprise scalability using Databricks, GraphQL,
+and the Tableau Metadata API, as well as AI-driven validation and optimization.
+
