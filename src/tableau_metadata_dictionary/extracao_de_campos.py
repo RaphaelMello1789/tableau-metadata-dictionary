@@ -1,35 +1,14 @@
-"""
-extracao_de_campos.py
-
-Extrai metadados de **campos calculados** (calculated fields) de um arquivo
-Tableau Workbook (`.twb`).
-
-Principais diferenças em relação à primeira versão:
-1. Ignora *namespaces* – muitos `.twb` não usam prefixo `t:` nos nós
-   `<column>`/`<calculation>`. Assim, usamos `local-name()` para encontrar os
-   elementos.
-2. Filtro opcional por **prefixos** (ex.: `kpi_`, `prmt_`, …). Se passado,
-   devolve apenas os campos cujo `field_name` começa com qualquer prefixo.
-
-Uso rápido
-----------
-from pathlib import Path
-from extracao_de_campos import get_calculated_fields
-
-campos = get_calculated_fields(
-    Path("dashboard.twb"),
-    prefixes=("kpi_", "hp_", "prmt_"),
-)
-print(campos[:5])
-"""
 from __future__ import annotations
 
+import re
 from pathlib import Path
-from typing import Final, Iterable, List, Dict, Tuple, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from lxml import etree
 
-__all__: Final = ["get_calculated_fields"]
+
+CALC_TOKEN_RE = re.compile(r"(Calculation_\d+)")
+CALC_BRACKET_RE = re.compile(r"\[(Calculation_\d+)\]")
 
 
 def get_calculated_fields(
@@ -37,20 +16,12 @@ def get_calculated_fields(
     *,
     prefixes: Optional[Tuple[str, ...]] = None,
 ) -> List[Dict[str, str]]:
-    """Percorre o XML e devolve metadados dos campos calculados.
-
-    Parameters
-    ----------
-    twb_path : Path | str
-        Caminho para o arquivo `.twb`.
-    prefixes : tuple[str, ...] | None, default None
-        Se fornecido, devolve somente os campos cujo *caption/name* começa com
-        um dos prefixos.
+    """Read the XML and return the metadata of calculated fields.
 
     Returns
     -------
     list of dict
-        Cada item traz chaves: **field_name**, **formula**, **datasource**.
+        Keys: **field_name**, **formula**, **datasource**.
     """
 
     twb_path = Path(twb_path)
@@ -58,35 +29,72 @@ def get_calculated_fields(
     root = tree.getroot()
 
     # Helpers -----------------------------------------------------------------
-    def _lname(tag: str) -> str:  # local‑name sem namespace
+    def _lname(tag: str) -> str:  
         return tag.split("}")[-1] if "}" in tag else tag
 
-    def _iter_columns() -> Iterable[etree._Element]:  # noqa: WPS430
+    def _iter_columns() -> Iterable[etree._Element]:
         for el in root.iter():
             if _lname(el.tag) == "column":
                 yield el
+
+    def _strip_brackets(s: str) -> str:
+        s = (s or "").strip()
+        if s.startswith("[") and s.endswith("]"):
+            return s[1:-1]
+        return s
+
+    def _extract_calc_token(s: str) -> str | None:
+        if not s:
+            return None
+        m = CALC_TOKEN_RE.search(str(s))
+        return m.group(1) if m else None
+
+    # -------------------------------------------------------------------------
+    # 1) Pre-process: solve the issue about the use of Tableau internal ID for calculated field
+    
+    token_to_caption: Dict[str, str] = {}
+
+    for col in _iter_columns():
+        raw_name = col.get("name") or ""
+        token = _extract_calc_token(raw_name)
+        caption = col.get("caption")
+
+        if token and caption:
+            token_to_caption[token] = caption
 
     # -------------------------------------------------------------------------
     results: List[Dict[str, str]] = []
 
     for col in _iter_columns():
-        # Verifica se possui filho <calculation>
-        calc_child = next(
-            (c for c in col if _lname(c.tag) == "calculation"),
-            None,
-        )
+        calc_child = next((c for c in col if _lname(c.tag) == "calculation"), None)
         if calc_child is None:
-            continue  # não é campo calculado
+            continue 
 
-        field_name = col.get("caption") or col.get("name")  # caption > name
-        if not field_name:
-            continue  # segurança extra
+        raw_field_name = col.get("caption") or col.get("name")
+        if not raw_field_name:
+            continue
 
-        # Aplica filtro de prefixos, se solicitado
+        raw_field_name = _strip_brackets(raw_field_name)
+
+        token = _extract_calc_token(raw_field_name)
+        if token and raw_field_name.startswith("Calculation_"):
+            raw_field_name = token_to_caption.get(token, raw_field_name)
+
+        field_name = raw_field_name
+
         if prefixes and not field_name.startswith(prefixes):
             continue
 
-        formula = calc_child.get("formula", "")
+        # 2) Replace [Calculation] for [Caption] if exist
+        formula = calc_child.get("formula", "") or ""
+
+        def _repl(match: re.Match) -> str:
+            t = match.group(1)
+            display = token_to_caption.get(t, t)
+            return f"[{display}]"
+
+        formula = CALC_BRACKET_RE.sub(_repl, formula)
+
         datasource = col.get("datatype", "desconhecido")
 
         results.append(
