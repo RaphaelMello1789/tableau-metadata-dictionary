@@ -46,3 +46,16 @@ analytics platform.
 Future articles will cover enterprise scalability using Databricks, GraphQL,
 and the Tableau Metadata API, as well as AI-driven validation and optimization.
 
+## Version History
+
+### v0.1.0 — Initial Version
+- Initial implementation for extracting calculated fields from Tableau `.twb` and `.twbx` files  
+- CSV-based metadata export for calculated fields  
+- Prefix-based filtering to enforce naming and governance standards  
+
+### v0.2.0 — Internal Calculation ID Resolution & Documentation Update
+- Resolved Tableau internal calculation identifiers (`Calculation_####`) in extracted formulas  
+- Replaced internal IDs with human-readable field names based on captions  
+- Improved formula readability in the generated CSV output  
+- Translated scripts, comments, and documentation to English  
+- Minor code refactoring to improve clarity and maintainability
